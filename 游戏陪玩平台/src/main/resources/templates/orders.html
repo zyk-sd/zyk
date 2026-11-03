@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单中心 · 游戏陪玩平台</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: nav(${active})}"></div>
+
+    <main class="main">
+        <header class="page-head">
+            <div>
+                <h2>订单中心</h2>
+                <p>玩家下单 → 陪玩接单 → 服务完成 → 玩家评价 → 管理员结算</p>
+            </div>
+            <div class="head-meta">当前显示 <span th:text="${orders.size()}">0</span> 条订单</div>
+        </header>
+
+        <div class="alert success" th:if="${msg}" th:text="${msg}"></div>
+        <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+        <!-- 下单表单（仅玩家可见） -->
+        <section class="panel" th:if="${isPlayer}" style="margin-bottom: 18px;">
+            <div class="panel-head">
+                <h3>下单</h3>
+                <span class="muted">选择在线陪玩，填写服务时长即可下单</span>
+            </div>
+            <form class="form" th:action="@{/orders/create}" method="post">
+                <div class="form-row">
+                    <div>
+                        <label for="companionSelect">选择陪玩</label>
+                        <select id="companionSelect" name="companionId" required>
+                            <option value="" disabled selected>请选择陪玩账号</option>
+                            <option th:each="c : ${onlineCompanions}" th:value="${c.id}"
+                                    th:data-price="${c.pricePerHour}"
+                                    th:text="${c.name + ' · ' + c.gameName + ' · ' + c.rankLevel + ' · ¥' + #numbers.formatDecimal(c.pricePerHour, 1, 'COMMA', 2, 'POINT') + '/小时'}">
+                                陪玩
+                            </option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="hours">服务时长（1~12 小时）</label>
+                        <input type="number" id="hours" name="hours" min="1" max="12" value="2" required>
+                    </div>
+                </div>
+                <div>
+                    <label for="remark">备注（可选）</label>
+                    <input type="text" id="remark" name="remark" placeholder="例如：晚上八点开始，希望多教一下打野思路">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn primary">立即下单</button>
+                    <span class="form-hint" style="align-self: center;">预计金额：<b id="totalAmount" style="color:#ffd76f;">¥ 0.00</b></span>
+                </div>
+            </form>
+        </section>
+
+        <!-- 状态筛选 -->
+        <div class="tabs">
+            <a class="tab" th:href="@{/orders}" th:classappend="${currentStatus == ''} ? 'on'">全部</a>
+            <a class="tab" th:each="s : ${statuses}" th:href="@{/orders(status=${s.name()})}"
+               th:classappend="${currentStatus == s.name()} ? 'on'" th:text="${s.label}">状态</a>
+        </div>
+
+        <!-- 订单表格 -->
+        <section class="panel">
+            <div class="panel-head">
+                <h3>订单列表</h3>
+                <span class="muted">不同角色只能看到与自己相关的订单</span>
+            </div>
+            <table class="table" th:if="${!orders.isEmpty()}">
+                <thead>
+                <tr>
+                    <th>订单号</th>
+                    <th>游戏 / 陪玩</th>
+                    <th>玩家</th>
+                    <th>时长</th>
+                    <th>金额</th>
+                    <th>状态</th>
+                    <th>备注</th>
+                    <th>下单时间</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="o : ${orders}">
+                    <td class="mono" th:text="${o.orderNo}">GP20261031001</td>
+                    <td>
+                        <span th:text="${o.companion.gameName}">游戏</span>
+                        <small th:text="${o.companion.name}">陪玩</small>
+                    </td>
+                    <td th:text="${o.player.realName}">玩家</td>
+                    <td th:text="${o.hours + ' 小时'}">2 小时</td>
+                    <td>
+                        <span th:text="${'¥ ' + #numbers.formatDecimal(o.amount, 1, 'COMMA', 2, 'POINT')}">¥ 0.00</span>
+                        <small th:text="${'单价 ¥' + #numbers.formatDecimal(o.unitPrice, 1, 'COMMA', 2, 'POINT')}">单价</small>
+                    </td>
+                    <td>
+                        <span class="badge" th:classappend="${o.status.name()}" th:text="${o.status.label}">状态</span>
+                        <small th:if="${reviewedMap.get(o.id)}">已评价</small>
+                        <small th:if="${settledMap.get(o.id)}">已结算</small>
+                    </td>
+                    <td th:text="${o.remark != null ? o.remark : '—'}">备注</td>
+                    <td th:text="${#temporals.format(o.createTime, 'yyyy-MM-dd HH:mm')}">时间</td>
+                    <td>
+                        <div class="actions">
+                            <!-- 接单：待接单状态，且当前用户是该陪玩或管理员 -->
+                            <form th:if="${o.status.name() == 'PENDING' and (isAdmin or (o.companion.user != null and o.companion.user.id eq session.loginUser.id))}"
+                                  th:action="@{/orders/accept/{id}(id=${o.id})}" method="post">
+                                <button type="submit" class="btn sm primary">接单</button>
+                            </form>
+
+                            <!-- 完成：服务中状态，且当前用户是该陪玩或管理员 -->
+                            <form th:if="${o.status.name() == 'ACCEPTED' and (isAdmin or (o.companion.user != null and o.companion.user.id eq session.loginUser.id))}"
+                                  th:action="@{/orders/complete/{id}(id=${o.id})}" method="post">
+                                <button type="submit" class="btn sm primary">完成订单</button>
+                            </form>
+
+                            <!-- 取消：待接单状态，且当前用户是下单玩家或管理员 -->
+                            <form th:if="${o.status.name() == 'PENDING' and (isAdmin or o.player.id eq session.loginUser.id)}"
+                                  th:action="@{/orders/cancel/{id}(id=${o.id})}" method="post"
+                                  onsubmit="return confirm('确定要取消这个订单吗？');">
+                                <button type="submit" class="btn sm danger">取消</button>
+                            </form>
+
+                            <!-- 去评价：订单已完成、尚未评价、且是本人订单 -->
+                            <a th:if="${o.status.name() == 'COMPLETED' and !reviewedMap.get(o.id) and o.player.id eq session.loginUser.id}"
+                               class="btn sm ghost" th:href="@{/reviews}">去评价</a>
+
+                            <span class="muted" th:if="${o.status.name() == 'CANCELLED'}">—</span>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <div class="empty" th:if="${orders.isEmpty()}">当前没有符合条件的订单</div>
+        </section>
+    </main>
+</div>
+
+<script>
+    // 根据所选陪玩单价和服务时长，实时计算预计金额
+    (function () {
+        var select = document.getElementById('companionSelect');
+        var hoursInput = document.getElementById('hours');
+        var total = document.getElementById('totalAmount');
+        if (!select || !hoursInput || !total) {
+            return;
+        }
+        function update() {
+            var option = select.selectedOptions.length ? select.selectedOptions[0] : null;
+            var price = option && option.dataset.price ? parseFloat(option.dataset.price) : 0;
+            var hours = parseInt(hoursInput.value || '0', 10);
+            total.textContent = '¥ ' + (price * hours).toFixed(2);
+        }
+        select.addEventListener('change', update);
+        hoursInput.addEventListener('input', update);
+        update();
+    })();
+</script>
+</body>
+</html>

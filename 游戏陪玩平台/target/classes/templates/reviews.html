@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>评价管理 · 游戏陪玩平台</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: nav(${active})}"></div>
+
+    <main class="main">
+        <header class="page-head">
+            <div>
+                <h2>评价管理</h2>
+                <p>玩家可对已完成订单打 1~5 星；陪玩师查看自己收到的评价</p>
+            </div>
+            <div class="head-meta">共 <span th:text="${reviewTotal}">0</span> 条评价</div>
+        </header>
+
+        <div class="alert success" th:if="${msg}" th:text="${msg}"></div>
+        <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+        <!-- 指标 -->
+        <section class="stats-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+            <div class="stat-card">
+                <span class="stat-label">平均评分</span>
+                <strong th:text="${avgRating}">0.0</strong>
+                <em>满分 5.0 分</em>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">评价总数</span>
+                <strong th:text="${reviewTotal}">0</strong>
+                <em>五星 <span th:text="${r5}">0</span> 条 · 四星 <span th:text="${r4}">0</span> 条</em>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">好评率（4~5 星）</span>
+                <strong th:text="${reviewTotal > 0 ? (r5 + r4) * 100 / reviewTotal : 0}">0</strong>
+                <em>百分比（%）</em>
+            </div>
+        </section>
+
+        <!-- 待评价订单表单（仅玩家） -->
+        <section class="panel" th:if="${isPlayer}" style="margin-bottom: 18px;">
+            <div class="panel-head">
+                <h3>待评价订单</h3>
+                <span class="muted" th:text="${pendingReviewOrders.size() + ' 个订单待评价'}">0 个订单待评价</span>
+            </div>
+
+            <form class="form" th:if="${!pendingReviewOrders.isEmpty()}" th:action="@{/reviews/create}" method="post">
+                <div class="form-row">
+                    <div>
+                        <label for="orderId">选择订单</label>
+                        <select id="orderId" name="orderId" required>
+                            <option th:each="o : ${pendingReviewOrders}" th:value="${o.id}"
+                                    th:text="${o.orderNo + ' · ' + o.companion.name + ' · ' + o.companion.gameName + ' · ' + o.hours + ' 小时 · ¥' + #numbers.formatDecimal(o.amount, 1, 'COMMA', 2, 'POINT')}">
+                                订单
+                            </option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="rating">评分</label>
+                        <select id="rating" name="rating" required>
+                            <option value="5" selected>5 星 —— 非常满意</option>
+                            <option value="4">4 星 —— 满意</option>
+                            <option value="3">3 星 —— 一般</option>
+                            <option value="2">2 星 —— 不满意</option>
+                            <option value="1">1 星 —— 很差</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label for="content">评价内容</label>
+                    <textarea id="content" name="content" placeholder="说说这次陪玩体验，例如：技术很强，沟通很愉快……"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn primary">提交评价</button>
+                </div>
+            </form>
+
+            <div class="empty" th:if="${pendingReviewOrders.isEmpty()}">没有待评价的订单，感谢你的支持</div>
+        </section>
+
+        <section class="grid-2">
+            <!-- 评价列表 -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h3>评价列表</h3>
+                    <span class="muted" th:text="${isPlayer ? '我写过的评价' : '平台评价'}">平台评价</span>
+                </div>
+                <div class="review-list" th:if="${!reviews.isEmpty()}">
+                    <article class="review-item" th:each="r : ${reviews}">
+                        <div class="review-top">
+                            <div>
+                                <div class="review-user">
+                                    <span th:text="${r.player.realName}">玩家</span>
+                                    <span class="stars"
+                                          th:text="${#strings.substring('★★★★★', 0, r.rating) + (r.rating < 5 ? #strings.substring('☆☆☆☆☆', 0, 5 - r.rating) : '')}">★★★★★</span>
+                                </div>
+                                <div class="review-meta"
+                                     th:text="${'陪玩 ' + r.companion.name + ' · ' + r.companion.gameName + ' · 订单 ' + r.order.orderNo}">
+                                    陪玩 · 订单
+                                </div>
+                            </div>
+                            <span class="badge rating" th:text="${r.rating + '.0 分'}">5.0 分</span>
+                        </div>
+                        <p class="review-content" th:text="${r.content != null and !r.content.isBlank() ? r.content : '（该玩家没有填写文字评价）'}">内容</p>
+                        <div class="review-meta" style="margin-top: 8px;"
+                             th:text="${#temporals.format(r.createTime, 'yyyy-MM-dd HH:mm')}">时间</div>
+                    </article>
+                </div>
+                <div class="empty" th:if="${reviews.isEmpty()}">暂无评价记录</div>
+            </div>
+
+            <!-- 评分分布 -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h3>评分分布</h3>
+                    <span class="muted">基于当前可见评价</span>
+                </div>
+                <div class="rating-rows">
+                    <div class="rating-row">
+                        <span>5 星</span>
+                        <div class="bar-track"><div class="bar-fill completed"
+                             th:style="${'width: ' + (reviewTotal > 0 ? r5 * 100 / reviewTotal : 0) + '%'}"></div></div>
+                        <span th:text="${r5}">0</span>
+                    </div>
+                    <div class="rating-row">
+                        <span>4 星</span>
+                        <div class="bar-track"><div class="bar-fill accepted"
+                             th:style="${'width: ' + (reviewTotal > 0 ? r4 * 100 / reviewTotal : 0) + '%'}"></div></div>
+                        <span th:text="${r4}">0</span>
+                    </div>
+                    <div class="rating-row">
+                        <span>3 星</span>
+                        <div class="bar-track"><div class="bar-fill"
+                             th:style="${'width: ' + (reviewTotal > 0 ? r3 * 100 / reviewTotal : 0) + '%'}"></div></div>
+                        <span th:text="${r3}">0</span>
+                    </div>
+                    <div class="rating-row">
+                        <span>2 星</span>
+                        <div class="bar-track"><div class="bar-fill pending"
+                             th:style="${'width: ' + (reviewTotal > 0 ? r2 * 100 / reviewTotal : 0) + '%'}"></div></div>
+                        <span th:text="${r2}">0</span>
+                    </div>
+                    <div class="rating-row">
+                        <span>1 星</span>
+                        <div class="bar-track"><div class="bar-fill cancelled"
+                             th:style="${'width: ' + (reviewTotal > 0 ? r1 * 100 / reviewTotal : 0) + '%'}"></div></div>
+                        <span th:text="${r1}">0</span>
+                    </div>
+                </div>
+
+                <div class="panel-foot">
+                    <div class="mini">
+                        <span>评分规则</span>
+                        <b>1 ~ 5 星</b>
+                    </div>
+                    <div class="mini">
+                        <span>评价权限</span>
+                        <b>仅下单玩家</b>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

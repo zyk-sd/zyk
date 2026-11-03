@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>结算管理 · 游戏陪玩平台</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: nav(${active})}"></div>
+
+    <main class="main">
+        <header class="page-head">
+            <div>
+                <h2>结算管理</h2>
+                <p>订单完成后，管理员可发起结算：平台抽成 10%，其余收入归陪玩师</p>
+            </div>
+            <div class="head-meta" th:if="${isAdmin}">待结算 <span th:text="${unsettledOrders.size()}">0</span> 单</div>
+            <div class="head-meta" th:if="${isCompanion}">我的结算记录</div>
+            <div class="head-meta" th:if="${isPlayer}">我的订单结算情况</div>
+        </header>
+
+        <div class="alert success" th:if="${msg}" th:text="${msg}"></div>
+        <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+        <section class="stats-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+            <div class="stat-card">
+                <span class="stat-label">订单总额</span>
+                <strong th:text="${'¥ ' + #numbers.formatDecimal(grossSum, 1, 'COMMA', 2, 'POINT')}">¥ 0.00</strong>
+                <em>已结算订单的金额合计</em>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">平台抽成（10%）</span>
+                <strong th:text="${'¥ ' + #numbers.formatDecimal(commissionSum, 1, 'COMMA', 2, 'POINT')}">¥ 0.00</strong>
+                <em>平台服务收入</em>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label" th:text="${isCompanion} ? '我的累计收入' : '陪玩收入合计'">陪玩收入合计</span>
+                <strong th:text="${'¥ ' + #numbers.formatDecimal(netSum, 1, 'COMMA', 2, 'POINT')}">¥ 0.00</strong>
+                <em>订单总额减去平台抽成</em>
+            </div>
+        </section>
+
+        <!-- 待结算订单（仅管理员） -->
+        <section class="panel" th:if="${isAdmin}" style="margin-bottom: 18px;">
+            <div class="panel-head">
+                <h3>待结算订单</h3>
+                <span class="muted">显示已完成且尚未结算的订单</span>
+            </div>
+            <table class="table" th:if="${!unsettledOrders.isEmpty()}">
+                <thead>
+                <tr>
+                    <th>订单号</th>
+                    <th>游戏 / 陪玩</th>
+                    <th>玩家</th>
+                    <th>完成时间</th>
+                    <th>订单金额</th>
+                    <th>预计陪玩收入</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="o : ${unsettledOrders}">
+                    <td class="mono" th:text="${o.orderNo}">订单号</td>
+                    <td>
+                        <span th:text="${o.companion.gameName}">游戏</span>
+                        <small th:text="${o.companion.name}">陪玩</small>
+                    </td>
+                    <td th:text="${o.player.realName}">玩家</td>
+                    <td th:text="${o.finishTime != null ? #temporals.format(o.finishTime, 'yyyy-MM-dd HH:mm') : '—'}">时间</td>
+                    <td th:text="${'¥ ' + #numbers.formatDecimal(o.amount, 1, 'COMMA', 2, 'POINT')}">金额</td>
+                    <td th:text="${'¥ ' + #numbers.formatDecimal(expectedNetMap.get(o.id), 1, 'COMMA', 2, 'POINT')}">收入</td>
+                    <td>
+                        <form th:action="@{/settlements/create/{id}(id=${o.id})}" method="post"
+                              onsubmit="return confirm('确认结算该订单吗？平台将抽取 10% 服务费。');">
+                            <button type="submit" class="btn sm primary">立即结算</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <div class="empty" th:if="${unsettledOrders.isEmpty()}">所有已完成订单都已结算</div>
+        </section>
+
+        <!-- 结算单列表 -->
+        <section class="panel">
+            <div class="panel-head">
+                <h3>结算单记录</h3>
+                <span class="muted">共 <span th:text="${settlements.size()}">0</span> 条</span>
+            </div>
+            <table class="table" th:if="${!settlements.isEmpty()}">
+                <thead>
+                <tr>
+                    <th>订单号</th>
+                    <th>陪玩</th>
+                    <th>玩家</th>
+                    <th>订单总额</th>
+                    <th>平台抽成</th>
+                    <th>陪玩收入</th>
+                    <th>结算时间</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="s : ${settlements}">
+                    <td class="mono" th:text="${s.order.orderNo}">订单号</td>
+                    <td>
+                        <span th:text="${s.companion.name}">陪玩</span>
+                        <small th:text="${s.companion.gameName}">游戏</small>
+                    </td>
+                    <td th:text="${s.order.player.realName}">玩家</td>
+                    <td th:text="${'¥ ' + #numbers.formatDecimal(s.grossAmount, 1, 'COMMA', 2, 'POINT')}">总额</td>
+                    <td th:text="${'- ¥ ' + #numbers.formatDecimal(s.commission, 1, 'COMMA', 2, 'POINT')}">抽成</td>
+                    <td style="color: #2ee6a8;"
+                        th:text="${'¥ ' + #numbers.formatDecimal(s.netAmount, 1, 'COMMA', 2, 'POINT')}">收入</td>
+                    <td th:text="${#temporals.format(s.settleTime, 'yyyy-MM-dd HH:mm')}">时间</td>
+                </tr>
+                </tbody>
+            </table>
+            <div class="empty" th:if="${settlements.isEmpty()}">暂无结算记录</div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

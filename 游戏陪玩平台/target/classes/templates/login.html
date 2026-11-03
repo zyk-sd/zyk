@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 · 游戏陪玩订单与评价平台</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="login-body">
+<div class="login-wrap">
+
+    <!-- 左侧品牌介绍 -->
+    <div class="login-brand">
+        <div class="logo-badge">GP</div>
+        <h1>游戏陪玩<br>订单与评价平台</h1>
+        <p class="brand-sub">陪玩账号 · 下单 · 接单 · 评价 · 结算</p>
+        <ul class="brand-list">
+            <li><b>01</b><span>陪玩账号管理：录入游戏、区服、段位、单价与在线状态</span></li>
+            <li><b>02</b><span>完整订单流程：玩家下单 → 陪玩接单 → 服务完成</span></li>
+            <li><b>03</b><span>1~5 星评价体系，平台按 10% 抽成自动生成结算单</span></li>
+        </ul>
+        <div class="brand-foot">JavaEE 期末大作业 · 选题 H.3B · 游戏陪玩订单与评价</div>
+    </div>
+
+    <!-- 右侧登录表单 -->
+    <div class="login-panel">
+        <div class="login-card">
+            <h2>账号登录</h2>
+            <p class="login-tip">请使用下方演示账号登录，不同角色拥有不同权限</p>
+
+            <!-- 登录失败提示 -->
+            <div class="alert error" th:if="${error}" th:text="${error}">账号或密码错误</div>
+
+            <form class="form" th:action="@{/login}" method="post">
+                <label for="username">登录账号</label>
+                <input type="text" id="username" name="username" th:value="${username}"
+                       placeholder="请输入账号，例如 admin" required autofocus>
+
+                <label for="password">登录密码</label>
+                <input type="password" id="password" name="password"
+                       placeholder="请输入密码" required>
+
+                <button type="submit" class="btn primary block">登 录</button>
+            </form>
+
+            <!-- 演示账号 -->
+            <div class="demo-box">
+                <div class="demo-title">演示账号（点击自动填入）</div>
+                <div class="demo-list">
+                    <button type="button" class="demo-chip" data-user="admin" data-pass="123456">管理员 admin</button>
+                    <button type="button" class="demo-chip" data-user="player01" data-pass="123456">玩家 player01</button>
+                    <button type="button" class="demo-chip" data-user="companion01" data-pass="123456">陪玩 companion01</button>
+                </div>
+                <p class="demo-hint">全部演示账号密码统一为 123456</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 点击演示账号自动填充用户名和密码
+    document.querySelectorAll('.demo-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            document.querySelector('input[name="username"]').value = chip.dataset.user;
+            document.querySelector('input[name="password"]').value = chip.dataset.pass;
+        });
+    });
+</script>
+</body>
+</html>

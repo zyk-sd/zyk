@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑陪玩账号 · 游戏陪玩平台</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: nav(${active})}"></div>
+
+    <main class="main">
+        <header class="page-head">
+            <div>
+                <h2>编辑陪玩账号</h2>
+                <p>正在编辑：<span th:text="${companion.name}">名称</span>
+                    · 当前评分 <span th:text="${card.avgRatingText}">0.0</span>
+                    · 历史订单 <span th:text="${card.orderCount}">0</span> 单</p>
+            </div>
+            <a class="btn ghost" th:href="@{/companions}">返回列表</a>
+        </header>
+
+        <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+        <section class="panel" style="max-width: 880px;">
+            <div class="panel-head">
+                <h3>基本资料</h3>
+                <span class="muted">单价修改只影响之后的订单，历史订单金额不受影响</span>
+            </div>
+            <form class="form" th:action="@{/companions/update/{id}(id=${companion.id})}" method="post">
+                <div class="form-row-3">
+                    <div>
+                        <label for="name">陪玩昵称</label>
+                        <input type="text" id="name" name="name" th:value="${companion.name}" required>
+                    </div>
+                    <div>
+                        <label for="gameName">游戏名称</label>
+                        <input type="text" id="gameName" name="gameName" th:value="${companion.gameName}" required>
+                    </div>
+                    <div>
+                        <label for="serverName">区服</label>
+                        <input type="text" id="serverName" name="serverName" th:value="${companion.serverName}">
+                    </div>
+                </div>
+                <div class="form-row-3">
+                    <div>
+                        <label for="rankLevel">段位</label>
+                        <input type="text" id="rankLevel" name="rankLevel" th:value="${companion.rankLevel}">
+                    </div>
+                    <div>
+                        <label for="pricePerHour">单价（元/小时）</label>
+                        <input type="number" id="pricePerHour" name="pricePerHour" step="0.01" min="0.01"
+                               th:value="${companion.pricePerHour}" required>
+                    </div>
+                    <div>
+                        <label for="online">接单状态</label>
+                        <select id="online" name="online">
+                            <option value="true" th:selected="${companion.online}">在线接单</option>
+                            <option value="false" th:selected="${!companion.online}">离线休息</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div>
+                        <label for="userId">绑定陪玩师账号</label>
+                        <select id="userId" name="userId">
+                            <option th:if="${companion.user != null}" th:value="${companion.user.id}"
+                                    th:text="${companion.user.username + ' / ' + companion.user.realName + '（当前绑定）'}"
+                                    selected>当前绑定</option>
+                            <option th:each="u : ${unboundUsers}" th:value="${u.id}"
+                                    th:text="${u.username + ' / ' + u.realName}">账号</option>
+                        </select>
+                        <div class="form-hint">不选择则保持当前绑定关系不变</div>
+                    </div>
+                    <div>
+                        <label for="introduction">个人介绍</label>
+                        <textarea id="introduction" name="introduction" th:text="${companion.introduction}"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn primary">保存修改</button>
+                    <a class="btn ghost" th:href="@{/companions}">取消</a>
+                </div>
+            </form>
+        </section>
+    </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>陪玩账号 · 游戏陪玩平台</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: nav(${active})}"></div>
+
+    <main class="main">
+        <header class="page-head">
+            <div>
+                <h2>陪玩账号</h2>
+                <p>浏览全部陪玩资料；管理员可以新增、编辑、上下线与删除账号</p>
+            </div>
+            <div class="head-meta">共 <span th:text="${cards.size()}">0</span> 个陪玩账号</div>
+        </header>
+
+        <div class="alert success" th:if="${msg}" th:text="${msg}"></div>
+        <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+        <!-- 新增表单（仅管理员可见） -->
+        <section class="panel" th:if="${isAdmin}" style="margin-bottom: 18px;">
+            <div class="panel-head">
+                <h3>新增陪玩账号</h3>
+                <span class="muted">填写资料后点击“创建陪玩账号”</span>
+            </div>
+            <form class="form" th:action="@{/companions/add}" method="post">
+                <div class="form-row-3">
+                    <div>
+                        <label for="name">陪玩昵称</label>
+                        <input type="text" id="name" name="name" placeholder="例如：夜风" required>
+                    </div>
+                    <div>
+                        <label for="gameName">游戏名称</label>
+                        <input type="text" id="gameName" name="gameName" placeholder="例如：王者荣耀" required>
+                    </div>
+                    <div>
+                        <label for="serverName">区服</label>
+                        <input type="text" id="serverName" name="serverName" placeholder="例如：微信区">
+                    </div>
+                </div>
+                <div class="form-row-3">
+                    <div>
+                        <label for="rankLevel">段位</label>
+                        <input type="text" id="rankLevel" name="rankLevel" placeholder="例如：荣耀王者">
+                    </div>
+                    <div>
+                        <label for="pricePerHour">单价（元/小时）</label>
+                        <input type="number" id="pricePerHour" name="pricePerHour" step="0.01" min="0.01"
+                               placeholder="例如：45.00" required>
+                    </div>
+                    <div>
+                        <label for="online">接单状态</label>
+                        <select id="online" name="online">
+                            <option value="true" selected>在线接单</option>
+                            <option value="false">离线休息</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div>
+                        <label for="userId">绑定陪玩师账号（可选）</label>
+                        <select id="userId" name="userId">
+                            <option value="">不绑定账号</option>
+                            <option th:each="u : ${unboundUsers}" th:value="${u.id}"
+                                    th:text="${u.username + ' / ' + u.realName}">账号</option>
+                        </select>
+                        <div class="form-hint">绑定后，该账号登录即可看到并处理自己的订单</div>
+                    </div>
+                    <div>
+                        <label for="introduction">个人介绍</label>
+                        <textarea id="introduction" name="introduction" placeholder="例如：国服打野，节奏带飞……"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn primary">创建陪玩账号</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- 陪玩账号卡片列表 -->
+        <section class="companion-grid">
+            <article class="companion-card" th:each="card : ${cards}">
+                <header>
+                    <div class="avatar-lg" th:text="${#strings.substring(card.companion.name, 0, 1)}">陪</div>
+                    <div class="cc-title">
+                        <h3 th:text="${card.companion.name}">陪玩昵称</h3>
+                        <span th:text="${card.companion.gameName + (card.companion.serverName != null ? ' · ' + card.companion.serverName : '')}">游戏</span>
+                    </div>
+                    <span class="badge" th:classappend="${card.companion.online} ? 'online' : 'offline'"
+                          th:text="${card.companion.online} ? '在线' : '离线'">状态</span>
+                </header>
+
+                <div class="cc-meta">
+                    <span>段位 <b th:text="${card.companion.rankLevel != null ? card.companion.rankLevel : '未填写'}">段位</b></span>
+                    <span>评分 <b th:text="${card.avgRatingText}">0.0</b></span>
+                    <span>评价 <b th:text="${card.reviewCount}">0</b></span>
+                    <span>订单 <b th:text="${card.orderCount}">0</b></span>
+                </div>
+
+                <p class="cc-intro" th:text="${card.companion.introduction != null ? card.companion.introduction : '这位陪玩还没有填写个人介绍。'}">介绍</p>
+
+                <div class="cc-foot">
+                    <div class="price">
+                        <b th:text="${'¥ ' + #numbers.formatDecimal(card.companion.pricePerHour, 1, 'COMMA', 2, 'POINT')}">¥ 0.00</b>
+                        <small>/ 小时</small>
+                    </div>
+                    <div class="cc-actions" th:if="${isAdmin}">
+                        <a class="btn ghost sm" th:href="@{/companions/edit/{id}(id=${card.companion.id})}">编辑</a>
+                        <form th:action="@{/companions/toggle/{id}(id=${card.companion.id})}" method="post">
+                            <button type="submit" class="btn ghost sm"
+                                    th:text="${card.companion.online} ? '下线' : '上线'">下线</button>
+                        </form>
+                        <form th:action="@{/companions/delete/{id}(id=${card.companion.id})}" method="post"
+                              onsubmit="return confirm('确定要删除这个陪玩账号吗？已有订单的账号无法删除。');">
+                            <button type="submit" class="btn danger sm">删除</button>
+                        </form>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <div class="empty" th:if="${cards.isEmpty()}">暂无陪玩账号，请由管理员新增</div>
+    </main>
+</div>
+</body>
+</html>

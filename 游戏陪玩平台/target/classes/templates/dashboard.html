@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据看板 · 游戏陪玩平台</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="app">
+    <div th:replace="~{fragments/layout :: nav(${active})}"></div>
+
+    <main class="main">
+        <header class="page-head">
+            <div>
+                <h2>数据看板</h2>
+                <p>欢迎回来，<span th:text="${me.realName}">用户</span>
+                    <span th:text="${'（' + me.role.label + '）'}">（角色）</span>
+                </p>
+            </div>
+            <div class="head-meta">今天是 <span th:text="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">2026-10-31</span></div>
+        </header>
+
+        <div class="alert success" th:if="${msg}" th:text="${msg}"></div>
+        <div class="alert error" th:if="${error}" th:text="${error}"></div>
+
+        <!-- 核心指标 -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">陪玩账号</span>
+                <strong th:text="${companionCount}">0</strong>
+                <em>其中在线 <span th:text="${onlineCount}">0</span> 个 · 玩家 <span th:text="${playerCount}">0</span> 人</em>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">订单总数</span>
+                <strong th:text="${totalOrders}">0</strong>
+                <em>待接单 <span th:text="${pendingCount}">0</span> 单 · 服务中 <span th:text="${acceptedCount}">0</span> 单</em>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">平均评分</span>
+                <strong th:text="${avgRating}">0.0</strong>
+                <em>共 <span th:text="${reviewCount}">0</span> 条评价 · 满分 5.0</em>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">已完成流水</span>
+                <strong th:text="${'¥ ' + #numbers.formatDecimal(totalRevenue, 1, 'COMMA', 2, 'POINT')}">¥ 0.00</strong>
+                <em>平台抽成 <span th:text="${'¥ ' + #numbers.formatDecimal(totalCommission, 1, 'COMMA', 2, 'POINT')}"></span></em>
+            </div>
+        </section>
+
+        <section class="grid-2">
+            <!-- 订单状态分布 -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h3>订单状态分布</h3>
+                    <span class="muted">共 <span th:text="${totalOrders}">0</span> 单</span>
+                </div>
+                <div class="bars">
+                    <div class="bar-row">
+                        <span class="bar-name">待接单 <b th:text="${pendingCount}">0</b></span>
+                        <div class="bar-track"><div class="bar-fill pending" th:style="${'width: ' + pendingPct + '%'}"></div></div>
+                        <span class="bar-pct" th:text="${pendingPct + '%'}">0%</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-name">服务中 <b th:text="${acceptedCount}">0</b></span>
+                        <div class="bar-track"><div class="bar-fill accepted" th:style="${'width: ' + acceptedPct + '%'}"></div></div>
+                        <span class="bar-pct" th:text="${acceptedPct + '%'}">0%</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-name">已完成 <b th:text="${completedCount}">0</b></span>
+                        <div class="bar-track"><div class="bar-fill completed" th:style="${'width: ' + completedPct + '%'}"></div></div>
+                        <span class="bar-pct" th:text="${completedPct + '%'}">0%</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-name">已取消 <b th:text="${cancelledCount}">0</b></span>
+                        <div class="bar-track"><div class="bar-fill cancelled" th:style="${'width: ' + cancelledPct + '%'}"></div></div>
+                        <span class="bar-pct" th:text="${cancelledPct + '%'}">0%</span>
+                    </div>
+                </div>
+                <div class="panel-foot">
+                    <div class="mini">
+                        <span>已完成流水</span>
+                        <b th:text="${'¥ ' + #numbers.formatDecimal(totalRevenue, 1, 'COMMA', 2, 'POINT')}">¥ 0.00</b>
+                    </div>
+                    <div class="mini">
+                        <span>平台抽成合计</span>
+                        <b th:text="${'¥ ' + #numbers.formatDecimal(totalCommission, 1, 'COMMA', 2, 'POINT')}">¥ 0.00</b>
+                    </div>
+                    <div class="mini">
+                        <span>陪玩累计收入</span>
+                        <b th:text="${'¥ ' + #numbers.formatDecimal(totalNet, 1, 'COMMA', 2, 'POINT')}">¥ 0.00</b>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 我的数据 + 评分榜 -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h3>我的数据</h3>
+                    <span class="muted" th:text="${me.role.label}">角色</span>
+                </div>
+                <ul class="personal-list">
+                    <li th:each="s : ${personalStats}">
+                        <span th:text="${s.label}">指标</span>
+                        <strong th:text="${s.value}">数值</strong>
+                    </li>
+                </ul>
+
+                <div class="panel-head" style="margin-top: 22px;">
+                    <h3>陪玩评分榜</h3>
+                    <span class="muted">TOP 3</span>
+                </div>
+                <ol class="rank-list">
+                    <li th:each="card, i : ${ranking}">
+                        <span class="rank-no" th:text="${i.count}">1</span>
+                        <div>
+                            <div class="rank-name" th:text="${card.companion.name}">陪玩</div>
+                            <div class="rank-meta"
+                                 th:text="${card.companion.gameName + ' · ' + card.avgRatingText + ' 分 · ' + card.reviewCount + ' 条评价'}">
+                                游戏 · 0.0 分
+                            </div>
+                        </div>
+                    </li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- 最新订单 -->
+        <section class="panel">
+            <div class="panel-head">
+                <h3>最新订单</h3>
+                <a class="link" th:href="@{/orders}">查看全部（<span th:text="${recentOrderTotal}">0</span> 单）</a>
+            </div>
+            <table class="table" th:if="${!recentOrders.isEmpty()}">
+                <thead>
+                <tr>
+                    <th>订单号</th>
+                    <th>游戏 / 陪玩</th>
+                    <th>玩家</th>
+                    <th>时长</th>
+                    <th>金额</th>
+                    <th>状态</th>
+                    <th>下单时间</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="o : ${recentOrders}">
+                    <td class="mono" th:text="${o.orderNo}">GP20261031001</td>
+                    <td>
+                        <span th:text="${o.companion.gameName}">游戏</span>
+                        <small th:text="${o.companion.name}">陪玩</small>
+                    </td>
+                    <td th:text="${o.player.realName}">玩家</td>
+                    <td th:text="${o.hours + ' 小时'}">2 小时</td>
+                    <td th:text="${'¥ ' + #numbers.formatDecimal(o.amount, 1, 'COMMA', 2, 'POINT')}">¥ 90.00</td>
+                    <td>
+                        <span class="badge" th:classappend="${o.status.name()}" th:text="${o.status.label}">状态</span>
+                    </td>
+                    <td th:text="${#temporals.format(o.createTime, 'yyyy-MM-dd HH:mm')}">时间</td>
+                </tr>
+                </tbody>
+            </table>
+            <div class="empty" th:if="${recentOrders.isEmpty()}">暂无订单数据</div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

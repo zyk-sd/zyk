@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- ============================================================
+     公共左侧导航栏片段
+     参数 active：当前激活的菜单（dashboard / companions / orders / reviews / settlements）
+     ============================================================ -->
+<nav th:fragment="nav(active)" class="sidebar">
+    <div class="brand">
+        <div class="brand-logo">GP</div>
+        <div class="brand-text">
+            <strong>陪玩平台</strong>
+            <span>订单 · 评价 · 结算</span>
+        </div>
+    </div>
+
+    <div class="nav-group">
+        <div class="nav-title">管理菜单</div>
+        <a class="nav-item" th:classappend="${active == 'dashboard'} ? 'active'" th:href="@{/}"><i></i>数据看板</a>
+        <a class="nav-item" th:classappend="${active == 'companions'} ? 'active'" th:href="@{/companions}"><i></i>陪玩账号</a>
+        <a class="nav-item" th:classappend="${active == 'orders'} ? 'active'" th:href="@{/orders}"><i></i>订单中心</a>
+        <a class="nav-item" th:classappend="${active == 'reviews'} ? 'active'" th:href="@{/reviews}"><i></i>评价管理</a>
+        <a class="nav-item" th:classappend="${active == 'settlements'} ? 'active'" th:href="@{/settlements}"><i></i>结算管理</a>
+    </div>
+
+    <div class="sidebar-foot">
+        <div class="user-box">
+            <div class="avatar" th:text="${#strings.substring(session.loginUser.realName, 0, 1)}">A</div>
+            <div class="user-info">
+                <strong th:text="${session.loginUser.realName}">用户</strong>
+                <span th:text="${session.loginUser.role.label}">角色</span>
+            </div>
+            <a class="logout" th:href="@{/logout}">退出</a>
+        </div>
+        <div class="foot-note">JavaEE 期末大作业 · H.3B</div>
+    </div>
+</nav>
+
+</body>
+</html>
